@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencatatan Keuangan</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --green: #10b981;
+            --red: #ef4444;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 16px;
+        }
+
+        .container { 
+            max-width: 480px; 
+            margin: 20px auto; 
+            background: var(--surface); 
+            padding: 24px; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        h1 { 
+            font-size: 20px; 
+            font-weight: 700; 
+            margin-top: 0;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+            text-align: center;
+        }
+
+        /* Sistem Halaman App */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Form Komponen */
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: var(--text); }
+        input, select { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #f8fafc; color: var(--text); }
+        input:focus, select:focus { outline: none; border-color: #cbd5e1; background: #fff; }
+        
+        .btn-primary { background-color: var(--text); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%; margin-top: 8px; }
+        .btn-primary:hover { background-color: #1e293b; }
+        
+        .btn-secondary { background-color: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%; margin-top: 12px; text-align: center; box-sizing: border-box; display: block; text-decoration: none; }
+        .btn-secondary:hover { background-color: #f1f5f9; color: var(--text); }
+
+        /* Komponen Halaman Belakang (Saldo & Riwayat) */
+        .saldo-box { 
+            background: #f8fafc; 
+            padding: 18px; 
+            border-radius: 10px; 
+            border: 1px solid var(--border);
+            margin-bottom: 20px; 
+        }
+        .saldo-label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .saldo-val { font-size: 24px; font-weight: 700; margin-top: 4px; letter-spacing: -0.5px; }
+
+        .row-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .stat-card { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+        .stat-label { font-size: 11px; color: var(--muted); }
+        .stat-val { font-size: 14px; font-weight: 600; margin-top: 2px; }
+        .stat-val.in { color: var(--green); }
+        .stat-val.out { color: var(--red); }
+
+        /* Tabel List Catatan */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 6px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        .amount { text-align: right; font-weight: 500; }
+        
+        .btn-del { background: none; color: #cbd5e1; border: none; padding: 0; cursor: pointer; font-size: 12px; width: auto; }
+        .btn-del:hover { color: var(--red); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Pencatatan Keuangan</h1>
+    
+    <!-- ================= HALAMAN DEPAN: INPUT DATA ================= -->
+    <div id="page-utama" class="page active">
+        <div class="form-group">
+            <label for="deskripsi">Keterangan</label>
+            <input type="text" id="deskripsi" placeholder="Misal: Gaji, Makan siang, Belanja">
+        </div>
+        
+        <div class="form-group">
+            <label for="jenis">Jenis Transaksi</label>
+            <select id="jenis">
+                <option value="Masuk">Uang Masuk (+)</option>
+                <option value="Keluar">Uang Keluar (-)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="jumlah">Nominal (Rp)</label>
+            <input type="number" id="jumlah" placeholder="Masukkan angka nominal">
+        </div>
+        
+        <button class="btn-primary" onclick="simpanTransaksi()">Simpan Transaksi</button>
+        
+        <!-- Tombol buat masuk ke halaman saldo & riwayat -->
+        <button class="btn-secondary" onclick="pindahHalaman('page-laporan')">Lihat Saldo & Riwayat</button>
+    </div>
+
+    <!-- ================= HALAMAN BELAKANG: SALDO & RIWAYAT ================= -->
+    <div id="page-laporan" class="page">
+        <div class="saldo-box">
+            <div class="saldo-label">Sisa Saldo</div>
+            <div id="saldoAkhir" class="saldo-val">Rp 0</div>
+        </div>
+
+        <div class="row-stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Uang Masuk</div>
+                <div id="totalMasuk" class="stat-val in">Rp 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Uang Keluar</div>
+                <div id="totalKeluar" class="stat-val out">Rp 0</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Keterangan</th>
+                        <th class="amount">Jumlah</th>
+                        <th style="width: 24px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="listTransaksi">
+                    <!-- Catatan lama di atas, catatan baru otomatis nambah di bawahnya -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tombol untuk kembali ke form input depan -->
+        <button class="btn-secondary" onclick="pindahHalaman('page-utama')">← Kembali ke Input</button>
+    </div>
+
+</div>
+
+<script>
+    // Memuat data dari memori internal browser
+    let catatan = JSON.parse(localStorage.getItem('buku_keuangan_final')) || [];
+
+    function pindahHalaman(idHalaman) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(idHalaman).classList.add('active');
+    }
+
+    function perbaruiData() {
+        localStorage.setItem('buku_keuangan_final', JSON.stringify(catatan));
+        const tbody = document.getElementById('listTransaksi');
+        tbody.innerHTML = '';
+        
+        let masuk = 0;
+        let keluar = 0;
+
+        catatan.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            let warna = item.jenis === 'Masuk' ? 'var(--green)' : 'var(--red)';
+            let tanda = item.jenis === 'Masuk' ? '+' : '-';
+
+            if (item.jenis === 'Masuk') masuk += item.jumlah;
+            else keluar += item.jumlah;
+
+            tr.innerHTML = `
+                <td><strong>${item.deskripsi}</strong></td>
+                <td class="amount" style="color: ${warna}">${tanda} Rp ${item.jumlah.toLocaleString('id-ID')}</td>
+                <td style="text-align: right;"><button class="btn-del" onclick="hapusCatatan(${index})">✕</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        let saldo = masuk - keluar;
+
+        document.getElementById('totalMasuk').innerText = 'Rp ' + masuk.toLocaleString('id-ID');
+        document.getElementById('totalKeluar').innerText = 'Rp ' + keluar.toLocaleString('id-ID');
+        document.getElementById('saldoAkhir').innerText = 'Rp ' + saldo.toLocaleString('id-ID');
+    }
+
+    function simpanTransaksi() {
+        const deskripsi = document.getElementById('deskripsi').value;
+        const jenis = document.getElementById('jenis').value;
+        const jumlah = parseFloat(document.getElementById('jumlah').value);
+
+        if (!deskripsi || isNaN(jumlah) || jumlah <= 0) {
+            alert('Harap isi keterangan dan jumlah uang.');
+            return;
+        }
+
+        // PENTING: Menggunakan .push() agar data baru otomatis bertambah di posisi PALING BAWAH
+        catatan.push({ deskripsi, jenis, jumlah });
+
+        document.getElementById('deskripsi').value = '';
+        document.getElementById('jumlah').value = '';
+
+        perbaruiData();
+
+        // Setelah simpan, halaman tetap di depan (tidak otomatis pindah, biar user yang klik sendiri)
+        alert('Transaksi berhasil disimpan!');
+    }
+
+    function hapusCatatan(index) {
+        catatan.splice(index, 1);
+        perbaruiData();
+    }
+
+    // Load data awal saat aplikasi dijalankan
+    perbaruiData();
+</script>
+
+</body>
+</html>
