@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Keuangan UMKM Mandiri</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4e73df;
+            --success: #1cc88a;
+            --info: #36b9cc;
+            --danger: #e74a3b;
+            --dark: #5a5c69;
+            --light-bg: #f8f9fc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        /* Container Utama - Fleksibel Mengikuti Layar */
+        .app-container {
+            width: 100%;
+            max-width: 600px; /* Dipersempit agar layout vertikal pas di laptop & HP */
+            margin: 0 auto;
+            box-sizing: border-box;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--light-bg);
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* Header Aplikasi */
+        .app-header {
+            background: linear-gradient(135deg, var(--primary), #224abe);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .app-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+        .app-header p { margin: 8px 0 0 0; font-size: 14px; opacity: 0.8; }
+
+        /* Area Konten */
+        .app-content {
+            flex: 1;
+            padding: 25px;
+        }
+
+        /* SUSUNAN MENU DEPAN (Selalu menumpuk ke bawah di semua device) */
+        .menu-depan {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* Tombol Menu Besar */
+        .btn-utama {
+            padding: 22px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%; 
+            box-sizing: border-box;
+        }
+        .btn-utama:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .btn-1 { background: linear-gradient(135deg, #4e73df, #224abe); }
+        .btn-2 { background: linear-gradient(135deg, #1cc88a, #13855c); }
+        .btn-3 { background: linear-gradient(135deg, #36b9cc, #258391); }
+        .btn-utama span { font-size: 26px; }
+
+        /* Pengaturan Halaman Dalam */
+        .page-section {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-top: 10px;
+        }
+        .page-section h3 { margin-top: 0; color: #333; font-size: 18px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+
+        /* Tombol Kembali */
+        .btn-kembali {
+            background-color: var(--dark);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* Navigasi Pintas Bawah */
+        .nav-bawah-box {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+        }
+        .btn-nav-cepat {
+            flex: 1;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: white;
+            color: #333;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .btn-nav-cepat:hover { background-color: #eee; }
+
+        /* Form Styling */
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #444; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .btn-submit { background-color: var(--success); color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+
+        /* Tabel Responsif */
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 14px; }
+        th, td { padding: 12px 10px; border: 1px solid #e3e6f0; text-align: left; }
+        th { background-color: #f8f9fc; color: #4e73df; font-weight: bold; }
+        
+        /* Label Jenis Transaksi */
+        .badge { padding: 4px 8px; border-radius: 20px; color: white; font-size: 11px; font-weight: bold; display: inline-block; }
+        .badge-penjualan { background-color: var(--primary); }
+        .badge-pemasukan { background-color: var(--success); }
+        .badge-pengeluaran { background-color: var(--danger); }
+
+        .btn-excel { background-color: #2e7d32; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; font-size: 14px; }
+
+        /* Statistik Grafik */
+        .canvas-container { background: white; padding: 10px; border-radius: 12px; margin-top: 15px; position: relative; width: 100%; box-sizing: border-box; }
+        .stat-ringkas { display: flex; justify-content: space-between; background: #eaecf4; padding: 15px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+        .text-untung { color: #1cc88a; }
+        .text-rugi { color: #e74a3b; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="app-header">
+            <h1>BukuKas UMKM</h1>
+            <p>Catat & Pantau Keuangan Praktis</p>
+        </div>
+
+        <div class="app-content">
+            
+            <div id="halamanMenu" class="menu-depan">
+                <button class="btn-utama btn-1" onclick="bukaHalaman('halCatat')">
+                    <div>
+                        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 5px;">MENU 1</div>
+                        Pencatatan Keuangan
+                    </div>
+                    <span>✍️</span>
+                </button>
+                <button class="btn-utama btn-2" onclick="bukaHalaman('halLaporan')">
+                    <div>
+                        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 5px;">MENU 2</div>
+                        Laporan Keuangan
+                    </div>
+                    <span>📋</span>
+                </button>
+                <button class="btn-utama btn-3" onclick="bukaHalaman('halStatistik')">
+                    <div>
+                        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 5px;">MENU 3</div>
+                        Statistik Keuntungan
+                    </div>
+                    <span>📊</span>
+                </button>
+            </div>
+
+            <div id="halCatat" class="page-section" style="display: none;">
+                <button class="btn-kembali" onclick="kembaliKeMenu()">⬅️ Beranda Utama</button>
+                <h3>Input Transaksi Baru</h3>
+                <form id="transaksiForm" onsubmit="simpanData(event)">
+                    <div class="form-group">
+                        <label>Tanggal</label>
+                        <input type="date" id="tanggal" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis Catatan</label>
+                        <select id="kategori" required>
+                            <option value="Penjualan">Penjualan (Omset Produk)</option>
+                            <option value="Pemasukan">Pemasukan Lainnya (Modal dll)</option>
+                            <option value="Pengeluaran">Pengeluaran (Biaya/Bahan)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Keterangan</label>
+                        <input type="text" id="keterangan" placeholder="Contoh: Jual Bakso / Beli Gas" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nominal (Rp)</label>
+                        <input type="number" id="jumlah" placeholder="Masukkan angka saja" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Simpan Transaksi</button>
+                </form>
+
+                <div class="nav-bawah-box">
+                    <button class="btn-nav-cepat" style="visibility: hidden;">Sebelumnya</button>
+                    <button class="btn-nav-cepat" onclick="bukaHalaman('halLaporan')">Ke Halaman Laporan 📋 ➡️</button>
+                </div>
+            </div>
+
+            <div id="halLaporan" class="page-section" style="display: none;">
+                <button class="btn-kembali" onclick="kembaliKeMenu()">⬅️ Beranda Utama</button>
+                <h3>Semua Riwayat Transaksi (Gabungan)</h3>
+                <button class="btn-excel" onclick="eksporExcel()">📥 Download Format Excel (.xlsx)</button>
+                
+                <div class="table-responsive">
+                    <table id="tabelGabungan">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Jenis</th>
+                                <th>Keterangan</th>
+                                <th>Nominal</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="nav-bawah-box">
+                    <button class="btn-nav-cepat" onclick="bukaHalaman('halCatat')">⬅️ Ke Form Pencatatan ✍️</button>
+                    <button class="btn-nav-cepat" onclick="bukaHalaman('halStatistik')">Ke Grafik Statistik 📊 ➡️</button>
+                </div>
+            </div>
+
+            <div id="halStatistik" class="page-section" style="display: none;">
+                <button class="btn-kembali" onclick="kembaliKeMenu()">⬅️ Beranda Utama</button>
+                <h3>Grafik Keuangan UMKM</h3>
+                
+                <div class="stat-ringkas">
+                    <span>Estimasi Laba Bersih:</span>
+                    <span id="labaBersihTeks">Rp 0</span>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="grafikKeuangan"></canvas>
+                </div>
+
+                <div class="nav-bawah-box">
+                    <button class="btn-nav-cepat" onclick="bukaHalaman('halLaporan')">⬅️ Ke Halaman Laporan 📋</button>
+                    <button class="btn-nav-cepat" style="visibility: hidden;">Selanjutnya</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Menggunakan kunci penyimpanan bersih v5 agar teratur
+        let database = JSON.parse(localStorage.getItem('db_umkm_bersih_v5')) || [];
+        document.getElementById('tanggal').valueAsDate = new Date();
+        let chartInstance = null;
+
+        function bukaHalaman(idHalaman) {
+            document.getElementById('halamanMenu').style.display = 'none';
+            document.getElementById('halCatat').style.display = 'none';
+            document.getElementById('halLaporan').style.display = 'none';
+            document.getElementById('halStatistik').style.display = 'none';
+
+            if(idHalaman === 'halamanMenu') {
+                document.getElementById('halamanMenu').style.display = 'flex';
+            } else {
+                document.getElementById(idHalaman).style.display = 'block';
+            }
+
+            if(idHalaman === 'halLaporan') muatTabelGabungan();
+            if(idHalaman === 'halStatistik') buatGrafikBeneran();
+            
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function kembaliKeMenu() {
+            bukaHalaman('halamanMenu');
+        }
+
+        function simpanData(e) {
+            e.preventDefault();
+            const data = {
+                tanggal: document.getElementById('tanggal').value,
+                kategori: document.getElementById('kategori').value,
+                keterangan: document.getElementById('keterangan').value,
+                jumlah: parseFloat(document.getElementById('jumlah').value)
+            };
+
+            database.push(data);
+            localStorage.setItem('db_umkm_bersih_v5', JSON.stringify(database));
+            alert('Transaksi Berhasil Dicatat!');
+            document.getElementById('transaksiForm').reset();
+            document.getElementById('tanggal').valueAsDate = new Date();
+        }
+
+        function muatTabelGabungan() {
+            const tbody = document.querySelector('#tabelGabungan tbody');
+            tbody.innerHTML = '';
+
+            if(database.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999; padding: 20px;">Belum ada data keuangan. Silakan input di Menu 1.</td></tr>';
+                return;
+            }
+
+            database.sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+            database.forEach(item => {
+                let badgeClass = 'badge-pemasukan';
+                if(item.kategori === 'Penjualan') badgeClass = 'badge-penjualan';
+                if(item.kategori === 'Pengeluaran') badgeClass = 'badge-pengeluaran';
+
+                const row = `<tr>
+                    <td>${item.tanggal}</td>
+                    <td><span class="badge ${badgeClass}">${item.kategori}</span></td>
+                    <td>${item.keterangan}</td>
+                    <td>Rp ${item.jumlah.toLocaleString('id-ID')}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function buatGrafikBeneran() {
+            let penjualan = 0, pemasukan = 0, pengeluaran = 0;
+
+            database.forEach(item => {
+                if(item.kategori === 'Penjualan') penjualan += item.jumlah;
+                if(item.kategori === 'Pemasukan') pemasukan += item.jumlah;
+                if(item.kategori === 'Pengeluaran') pengeluaran += item.jumlah;
+            });
+
+            const laba = (penjualan + pemasukan) - pengeluaran;
+            const labaTeks = document.getElementById('labaBersihTeks');
+            labaTeks.innerText = 'Rp ' + laba.toLocaleString('id-ID');
+            labaTeks.className = laba >= 0 ? 'text-untung' : 'text-rugi';
+
+            if (chartInstance) { chartInstance.destroy(); }
+
+            const ctx = document.getElementById('grafikKeuangan').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Penjualan', 'Pemasukan Lain', 'Pengeluaran'],
+                    datasets: [{
+                        label: 'Rupiah (Rp)',
+                        data: [penjualan, pemasukan, pengeluaran],
+                        backgroundColor: ['#4e73df', '#1cc88a', '#e74a3b'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        // PERBAIKAN REVISI FINAL: Ekspor ke Excel Otomatis Format Rp dan Lebar Kolom Pas
+        function eksporExcel() {
+            if(database.length === 0) { alert('Belum ada data!'); return; }
+
+            // Urutkan data berdasarkan tanggal terbaru sebelum diekspor
+            const dataUrut = [...database].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+            // Buat baris judul manual agar bisa diatur format per selnya
+            const dataHeader = [["Tanggal", "Jenis Transaksi", "Keterangan / Deskripsi", "Nominal"]];
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(dataHeader);
+
+            // Masukkan baris konten satu per satu dengan tipe Currency Excel asli
+            dataUrut.forEach((d, index) => {
+                const rowIndex = index + 1; // Baris setelah header (dimulai dari indeks ke-1)
+                
+                // Tambahkan data ke baris di sheet
+                XLSX.utils.sheet_add_aoa(ws, [[d.tanggal, d.kategori, d.keterangan, d.jumlah]], {origin: `A${rowIndex + 1}`});
+                
+                // Beri kode format akuntansi Rp khusus ke kolom D (Nominal)
+                const cellRef = `D${rowIndex + 1}`;
+                if(ws[cellRef]) {
+                    ws[cellRef].t = 'n'; // Set tipe sebagai Number (bukan teks)
+                    ws[cellRef].z = '"Rp"* #.##0;"Rp"* (#.##0);_("Rp"* "-"_);_(@_)'; // Format mata uang Rp resmi
+                }
+            });
+
+            // Otomatis atur lebar kolom agar tulisan tidak kepotong (Auto-Fit Width)
+            ws['!cols'] = [
+                { wch: 15 }, // Kolom Tanggal
+                { wch: 18 }, // Kolom Jenis Transaksi
+                { wch: 30 }, // Kolom Keterangan / Deskripsi
+                { wch: 20 }  // Kolom Nominal Rp
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Laporan_Keuangan");
+            XLSX.writeFile(wb, "Laporan_Keuangan_UMKM.xlsx");
+        }
+    </script>
+</body>
+</html>
